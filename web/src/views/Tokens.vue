@@ -50,11 +50,6 @@
             <el-option v-for="s in (form.type === 'sub' ? subs : cols)" :key="s.name" :label="s.name" :value="s.name" />
           </el-select>
         </el-form-item>
-        <el-form-item label="客户端">
-          <el-select v-model="form.target" filterable style="width:100%">
-            <el-option v-for="t in targets" :key="t" :label="targetLabel(t)" :value="t" />
-          </el-select>
-        </el-form-item>
         <el-form-item label="模式">
           <el-radio-group v-model="form.mode">
             <el-radio-button label="duration">时长</el-radio-button>
@@ -67,6 +62,9 @@
             <el-option :value="86400" label="1 天" />
             <el-option :value="604800" label="7 天" />
             <el-option :value="2592000" label="30 天" />
+            <el-option :value="15552000" label="半年" />
+            <el-option :value="31536000" label="一年" />
+            <el-option :value="0" label="永久" />
           </el-select>
         </el-form-item>
         <el-form-item v-if="form.mode === 'count'" label="次数">
@@ -74,7 +72,7 @@
         </el-form-item>
       </el-form>
       <el-alert type="info" :closable="false" style="margin-top:4px">
-        分享链接末尾的 <code>target=</code> 参数决定输出的客户端格式；客户端订阅时填这个链接即可。若需换客户端，手动把 <code>target</code> 改成下表格式即可。
+        生成后可在下方"预览 / 下载 / 复制链接"时再选择客户端格式；分享链接末尾的 <code>target=</code> 参数决定输出格式，客户端订阅时填这个链接即可。
       </el-alert>
       <template #footer>
         <el-button @click="dialog = false">取消</el-button>
@@ -109,7 +107,7 @@ const dialog = ref(false)
 const targetDialog = ref(false)
 const pendingRow = ref(null)
 const pendingAction = ref('')
-const form = ref({ type: 'sub', name: '', target: 'mihomo', mode: 'duration', seconds: 604800, count: 10 })
+const form = ref({ type: 'sub', name: '', mode: 'duration', seconds: 604800, count: 10 })
 
 const targetLabels = {
   mihomo: 'Clash / Mihomo',
@@ -198,7 +196,7 @@ async function load() {
 }
 
 function openCreate() {
-  form.value = { type: 'sub', name: subs.value[0]?.name || '', target: 'mihomo', mode: 'duration', seconds: 604800, count: 10 }
+  form.value = { type: 'sub', name: subs.value[0]?.name || '', mode: 'duration', seconds: 604800, count: 10 }
   dialog.value = true
 }
 
@@ -209,19 +207,20 @@ async function save() {
   }
   saving.value = true
   try {
+    const permanent = form.value.mode === 'duration' && form.value.seconds === 0
     const { data } = await createToken({
       type: form.value.type,
       name: form.value.name,
-      target: form.value.target,
       mode: form.value.mode,
       seconds: form.value.seconds,
+      permanent,
       count: form.value.count,
     })
     ElMessage.success('令牌已生成')
     dialog.value = false
     await load()
     try {
-      await copyText(shareUrl(data, form.value.target))
+      await copyText(shareUrl(data, 'mihomo'))
       ElMessage.success('分享链接已复制')
     } catch {
       // ignore clipboard errors here; user can still copy from the table
