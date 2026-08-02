@@ -22,13 +22,14 @@ func (s *Server) handleListTokens(c *gin.Context) {
 
 func (s *Server) handleCreateToken(c *gin.Context) {
 	var body struct {
-		Name    string `json:"name"`
-		Type    string `json:"type"`
-		Mode    string `json:"mode"`
-		Exp     int64  `json:"exp"`
-		Seconds int    `json:"seconds"`
-		Count   int    `json:"count"`
-		Target  string `json:"target"`
+		Name      string `json:"name"`
+		Type      string `json:"type"`
+		Mode      string `json:"mode"`
+		Exp       int64  `json:"exp"`
+		Seconds   int    `json:"seconds"`
+		Permanent bool   `json:"permanent"`
+		Count     int    `json:"count"`
+		Target    string `json:"target"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		abortError(c, http.StatusBadRequest, "invalid request body")
@@ -58,11 +59,12 @@ func (s *Server) handleCreateToken(c *gin.Context) {
 		}
 	}
 	opts := map[string]any{
-		"mode":    body.Mode,
-		"seconds": body.Seconds,
-		"exp":     body.Exp,
-		"count":   body.Count,
-		"target":  body.Target,
+		"mode":      body.Mode,
+		"seconds":   body.Seconds,
+		"permanent": body.Permanent,
+		"exp":       body.Exp,
+		"count":     body.Count,
+		"target":    body.Target,
 	}
 	token, err := share.BuildTokenPayload(body.Type, body.Name, opts)
 	if err != nil {
