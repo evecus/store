@@ -42,11 +42,22 @@ func BuildTokenPayload(targetType, name string, opts map[string]any) (model.Toke
 	switch mode {
 	case "duration":
 		seconds, _ := toInt64(opts["seconds"])
-		if seconds <= 0 {
+		permanent, _ := opts["permanent"].(bool)
+		switch {
+		case permanent || seconds < 0:
+			// non-expiring token: Exp stays 0, which Token.Usable() treats as
+			// "never expires".
+			t.ExpiresIn = "permanent"
+			t.Exp = 0
+		case seconds == 0:
+			// no explicit duration given: fall back to the default window.
 			seconds = 3600 * 24 * 7
+			t.ExpiresIn = fmt.Sprintf("%ds", seconds)
+			t.Exp = time.Now().Add(time.Duration(seconds) * time.Second).UnixMilli()
+		default:
+			t.ExpiresIn = fmt.Sprintf("%ds", seconds)
+			t.Exp = time.Now().Add(time.Duration(seconds) * time.Second).UnixMilli()
 		}
-		t.ExpiresIn = fmt.Sprintf("%ds", seconds)
-		t.Exp = time.Now().Add(time.Duration(seconds) * time.Second).UnixMilli()
 	case "datetime":
 		if v, ok := opts["exp"].(int64); ok && v > 0 {
 			t.Exp = v
