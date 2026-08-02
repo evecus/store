@@ -233,11 +233,6 @@ func (s *Server) downloadCollection(c *gin.Context, name, target string) {
 		abortError(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	body, err := pipeline.Process(req)
-	if err != nil {
-		abortError(c, http.StatusBadRequest, err.Error())
-		return
-	}
 	if c.Query("preview") == "1" {
 		renderSharePreview(c, name, target, body, s)
 		return
