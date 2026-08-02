@@ -16,9 +16,10 @@
           <el-tag v-for="s in row.subscriptions" :key="s" size="small" style="margin-right:4px">{{ s }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="260" fixed="right">
+      <el-table-column label="操作" width="300" fixed="right">
         <template #default="{ row }">
           <el-button size="small" @click="openEdit(row)">编辑</el-button>
+          <el-button size="small" @click="preview(row)">预览</el-button>
           <el-button size="small" type="danger" @click="remove(row)">删除</el-button>
         </template>
       </el-table-column>
@@ -43,13 +44,24 @@
         <el-button type="primary" :loading="saving" @click="save">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="previewDialog" title="选择预览客户端" width="420px">
+      <div class="target-grid">
+        <el-button
+          v-for="t in targets"
+          :key="t"
+          class="target-btn"
+          @click="openPreview(t)"
+        >{{ targetLabel(t) }}</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listSubs, listCollections, createCollection, patchCollection, deleteCollection } from '../api'
+import { listSubs, listCollections, createCollection, patchCollection, deleteCollection, getTargets } from '../api'
 
 const cols = ref([])
 const subs = ref([])
@@ -57,7 +69,31 @@ const loading = ref(false)
 const saving = ref(false)
 const dialog = ref(false)
 const editing = ref(false)
+const previewDialog = ref(false)
+const previewName = ref('')
 const form = ref({ name: '', subscriptions: [], processText: '' })
+
+const targetLabels = {
+  mihomo: 'Clash / Mihomo',
+  clash: 'Clash',
+  stash: 'Stash',
+  surge: 'Surge',
+  'surge-mac': 'Surge Mac',
+  surfboard: 'Surfboard',
+  loon: 'Loon',
+  shadowrocket: 'Shadowrocket',
+  qx: 'Quantumult X',
+  'sing-box': 'sing-box',
+  v2ray: 'V2Ray',
+  egern: 'Egern',
+  json: 'JSON',
+  uri: '通用链接 (URI)',
+}
+const targets = ref(Object.keys(targetLabels))
+
+function targetLabel(t) {
+  return targetLabels[t] || t
+}
 
 function parseProcess(text) {
   if (!text) return []
@@ -82,9 +118,10 @@ function processToText(ops) {
 async function load() {
   loading.value = true
   try {
-    const [c, s] = await Promise.all([listCollections(), listSubs()])
+    const [c, s, tg] = await Promise.all([listCollections(), listSubs(), getTargets().catch(() => null)])
     cols.value = c.data
     subs.value = s.data
+    if (tg && Array.isArray(tg.data) && tg.data.length) targets.value = tg.data
   } catch (e) {
     ElMessage.error(e.response?.data?.message || '加载失败')
   } finally {
@@ -143,6 +180,19 @@ async function remove(row) {
   }
 }
 
+function preview(row) {
+  previewName.value = row.name
+  previewDialog.value = true
+}
+
+function openPreview(target) {
+  const token = localStorage.getItem('token') || ''
+  const base = location.origin + location.pathname.replace(/\/[^/]*$/, '')
+  const url = `${base}/download/${encodeURIComponent(previewName.value)}?target=${encodeURIComponent(target)}&token=${encodeURIComponent(token)}&preview=1`
+  window.open(url, '_blank')
+  previewDialog.value = false
+}
+
 onMounted(load)
 </script>
 
@@ -155,4 +205,13 @@ onMounted(load)
   padding: 20px;
 }
 .toolbar { margin-bottom: 16px; display: flex; gap: 10px; }
+.target-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.target-btn {
+  width: 100%;
+  justify-content: center;
+}
 </style>
