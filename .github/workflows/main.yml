@@ -59,13 +59,13 @@ jobs:
           mkdir -p release
           CGO_ENABLED=0 GOOS=linux GOARCH=${{ matrix.arch }} \
             go build -trimpath -ldflags="-s -w" \
-            -o release/substore-linux-${{ matrix.arch }} ./cmd
+            -o release/subx-linux-${{ matrix.arch }} ./cmd
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: substore-linux-${{ matrix.arch }}
-          path: release/substore-linux-${{ matrix.arch }}
+          name: subx-linux-${{ matrix.arch }}
+          path: release/subx-linux-${{ matrix.arch }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
