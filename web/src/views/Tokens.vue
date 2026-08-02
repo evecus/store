@@ -17,13 +17,6 @@
       </el-table-column>
       <el-table-column prop="name" label="目标名称" min-width="140" />
       <el-table-column prop="token" label="Token" min-width="200" show-overflow-tooltip />
-      <el-table-column label="客户端/格式" width="170">
-        <template #default="{ row }">
-          <el-select v-model="row.target" size="small" style="width:100%">
-            <el-option v-for="t in targets" :key="t" :label="targetLabel(t)" :value="t" />
-          </el-select>
-        </template>
-      </el-table-column>
       <el-table-column label="模式" width="110">
         <template #default="{ row }">
           <el-tag size="small">{{ row.mode || 'duration' }}</el-tag>
@@ -36,9 +29,9 @@
       </el-table-column>
       <el-table-column label="操作" width="300" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" @click="copyUrl(row)">复制链接</el-button>
-          <el-button size="small" @click="preview(row)">预览</el-button>
-          <el-button size="small" @click="openRaw(row)">下载</el-button>
+          <el-button size="small" @click="askTarget(row, 'copy')">复制链接</el-button>
+          <el-button size="small" @click="askTarget(row, 'preview')">预览</el-button>
+          <el-button size="small" @click="askTarget(row, 'download')">下载</el-button>
           <el-button size="small" type="danger" @click="remove(row)">删除</el-button>
         </template>
       </el-table-column>
@@ -88,6 +81,17 @@
         <el-button type="primary" :loading="saving" @click="save">生成</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="targetDialog" title="选择客户端类型" width="420px">
+      <div class="target-grid">
+        <el-button
+          v-for="t in targets"
+          :key="t"
+          class="target-btn"
+          @click="confirmTarget(t)"
+        >{{ targetLabel(t) }}</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -102,6 +106,9 @@ const cols = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const dialog = ref(false)
+const targetDialog = ref(false)
+const pendingRow = ref(null)
+const pendingAction = ref('')
 const form = ref({ type: 'sub', name: '', target: 'mihomo', mode: 'duration', seconds: 604800, count: 10 })
 
 const targetLabels = {
@@ -126,10 +133,10 @@ function targetLabel(t) {
   return targetLabels[t] || t
 }
 
-function shareUrl(row, extra = '') {
+function shareUrl(row, target, extra = '') {
   const kind = row.type === 'sub' ? 'sub' : 'col'
   const base = location.origin + location.pathname.replace(/\/[^/]*$/, '')
-  return `${base}/share/${kind}/${encodeURIComponent(row.name)}?token=${row.token}&target=${encodeURIComponent(row.target || 'mihomo')}${extra}`
+  return `${base}/share/${kind}/${encodeURIComponent(row.name)}?token=${row.token}&target=${encodeURIComponent(target || 'mihomo')}${extra}`
 }
 
 async function copyText(text) {
@@ -149,22 +156,30 @@ async function copyText(text) {
   if (!ok) throw new Error('copy failed')
 }
 
-async function copyUrl(row) {
-  const url = shareUrl(row)
-  try {
-    await copyText(url)
-    ElMessage.success('分享链接已复制')
-  } catch {
-    ElMessage.warning('复制失败，请手动复制：' + url)
+function askTarget(row, action) {
+  pendingRow.value = row
+  pendingAction.value = action
+  targetDialog.value = true
+}
+
+async function confirmTarget(target) {
+  const row = pendingRow.value
+  const action = pendingAction.value
+  targetDialog.value = false
+  if (!row) return
+  if (action === 'copy') {
+    const url = shareUrl(row, target)
+    try {
+      await copyText(url)
+      ElMessage.success('分享链接已复制')
+    } catch {
+      ElMessage.warning('复制失败，请手动复制：' + url)
+    }
+  } else if (action === 'preview') {
+    window.open(shareUrl(row, target, '&preview=1'), '_blank')
+  } else if (action === 'download') {
+    window.open(shareUrl(row, target), '_blank')
   }
-}
-
-function preview(row) {
-  window.open(shareUrl(row, '&preview=1'), '_blank')
-}
-
-function openRaw(row) {
-  window.open(shareUrl(row), '_blank')
 }
 
 async function load() {
@@ -205,7 +220,12 @@ async function save() {
     ElMessage.success('令牌已生成')
     dialog.value = false
     await load()
-    copyUrl(data)
+    try {
+      await copyText(shareUrl(data, form.value.target))
+      ElMessage.success('分享链接已复制')
+    } catch {
+      // ignore clipboard errors here; user can still copy from the table
+    }
   } catch (e) {
     ElMessage.error(e.response?.data?.message || '生成失败')
   } finally {
@@ -236,4 +256,13 @@ onMounted(load)
   padding: 20px;
 }
 .toolbar { margin-bottom: 16px; display: flex; gap: 10px; }
+.target-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.target-btn {
+  width: 100%;
+  justify-content: center;
+}
 </style>
