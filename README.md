@@ -1,6 +1,6 @@
 <div align="center">
 <br>
-<img width="200" src="https://raw.githubusercontent.com/evecus/subx/master/web/public/icon-192.png" alt="SubX">
+<img width="200" src="https://raw.githubusercontent.com/cc63/ICON/main/Sub-Store.png" alt="SubX">
 <br>
 <br>
 <h2 align="center">Subx</h2>
